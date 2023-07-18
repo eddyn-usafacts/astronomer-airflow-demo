@@ -88,8 +88,8 @@ def validate_silver_schema_func():
     response = call_galactus(agent, payload)
     return response.status_code
 
-@aql.dataframe(task_id="silver_to_gold")
-def silver_to_gold_func():
+@aql.dataframe(task_id="silver_to_gold_tables")
+def silver_to_gold_tables_func():
     # Query out of Databricks SQL
     # Save Query in Dataset Fact
 
@@ -114,7 +114,7 @@ def demo_iy_table_39():
 
     validate_silver_schema = validate_silver_schema_func()
 
-    silver_to_gold = silver_to_gold_func()
+    silver_to_gold_tables = silver_to_gold_tables_func()
 
     bronze_to_json << wild_to_bronze
 
