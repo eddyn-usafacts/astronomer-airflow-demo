@@ -75,16 +75,6 @@ def bronze_to_json_func():
     response = call_galactus(agent, payload)
     return response.status_code
 
-@aql.dataframe(task_id="json_to_silver")
-def json_to_silver_func():
-    # # return azure.get_blobs_list_recursive('ingestions', pipelineId)  # This doesn't exist??? It's in the docs
-    # container = 'extractions'
-    # blob_path = get_most_recent_blob(container)['name']
-    # data = azure.read_file(container, blob_path)
-    # df = pd.DataFrame(json.loads(data))
-    pass
-    
-
 @dag(
     schedule="0 0 * * *",
     start_date=pendulum.from_format("2023-07-14", "YYYY-MM-DD").in_tz("UTC"),
@@ -95,8 +85,6 @@ def demo_cdc_data():
 
     bronze_to_json = bronze_to_json_func()
 
-    json_to_silver = json_to_silver_func()
-
     databricks_json_to_dimensionalized = DatabricksRunNowOperator(
         job_name="Run_Databricks_From_Airflow",
         databricks_conn_id="test_databricks_connection",
@@ -105,6 +93,6 @@ def demo_cdc_data():
 
     bronze_to_json << wild_to_bronze
 
-    json_to_silver << bronze_to_json
+    databricks_json_to_dimensionalized << bronze_to_json
 
 dag_obj = demo_cdc_data()
