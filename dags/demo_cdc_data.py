@@ -97,10 +97,10 @@ def demo_cdc_data():
 
     json_to_silver = json_to_silver_func()
 
-    databricks_dimensionalize_data = DatabricksRunNowOperator(
+    databricks_json_to_dimensionalized = DatabricksRunNowOperator(
         job_name="Run_Databricks_From_Airflow",
         databricks_conn_id="test_databricks_connection",
-        task_id="databricks_dimensionalize_data",
+        task_id="databricks_json_to_dimensionalized",
     )
 
     bronze_to_json << wild_to_bronze
