@@ -71,7 +71,12 @@ def wild_to_bronze_func():
 def bronze_to_json_func():
     # This would be equivalent to an agent/service that does "bronze to parquet", but Galactus used json
     agent = 'data_extraction_agent_excel'
-    payload = {'pipelineId': pipeline_id, 'createBy': 'eddyn@usafacts.org', 'codeLocation': 'airflow'}
+    payload = {
+        'pipelineId': pipeline_id, 
+        'createBy': 'eddyn@usafacts.org', 
+        'codeLocation': 'airflow',
+        'header': 3
+        }
     response = call_galactus(agent, payload)
     return response.status_code
 
@@ -85,14 +90,8 @@ def validate_silver_schema_func():
 
 @aql.dataframe(task_id="silver_to_gold")
 def silver_to_gold_func():
-    # This would be a query out of silver in the future
-    # Can query off any of the dimensions, each query becomes a gold table
-    # Each query that created a gold table should be saved (like dataset fact)
-    container = 'normalizations'
-    blob_path = get_most_recent_blob(container)['name']
-    data = azure.read_file(container, blob_path)
-    df = pd.DataFrame(json.loads(data))
-    print(df)
+    # Query out of Databricks SQL
+    # Save Query in Dataset Fact
 
 @dag(
     schedule="0 0 * * *",
@@ -104,10 +103,13 @@ def demo_iy_table_39():
 
     bronze_to_json = bronze_to_json_func()
 
-    databricks_transform_json_to_silver_schema = DatabricksRunNowOperator(
+    transform_json_to_silver_schema = DatabricksRunNowOperator(
         job_name="Run_Databricks_From_Airflow",
+        notebook_params={
+            "notebook_path": "IY/IY-Table-39-to-silver",
+        },
         databricks_conn_id="test_databricks_connection",
-        task_id="databricks_transform_json_to_silver_schema",
+        task_id="transform_json_to_silver_schema",
     )
 
     validate_silver_schema = validate_silver_schema_func()
@@ -116,10 +118,8 @@ def demo_iy_table_39():
 
     bronze_to_json << wild_to_bronze
 
-    databricks_transform_json_to_silver_schema << bronze_to_json
+    transform_json_to_silver_schema << bronze_to_json
 
-    silver_to_gold << validate_silver_schema
-
-    validate_silver_schema << databricks_transform_json_to_silver_schema
+    validate_silver_schema << transform_json_to_silver_schema
 
 dag_obj = demo_iy_table_39()
