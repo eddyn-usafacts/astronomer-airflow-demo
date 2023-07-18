@@ -75,24 +75,47 @@ def bronze_to_json_func():
     response = call_galactus(agent, payload)
     return response.status_code
 
+@aql.dataframe(task_id="pre_gold_to_validated_gold")
+def pre_gold_to_validated_gold_func():
+    # This would be equivalent to an agent/service that does "bronze to parquet", but Galactus used json
+    agent = 'data_normalization'
+    payload = {'pipelineId': pipeline_id, 'createBy': 'eddyn@usafacts.org', 'codeLocation': 'airflow'}
+    response = call_galactus(agent, payload)
+    return response.status_code
+
+@aql.dataframe(task_id="gold_to_metric")
+def gold_to_metric_func():
+    # This would be a query out of gold in the future
+    container = 'normalizations'
+    blob_path = get_most_recent_blob(container)['name']
+    data = azure.read_file(container, blob_path)
+    df = pd.DataFrame(json.loads(data))
+    print(df)
+
 @dag(
     schedule="0 0 * * *",
     start_date=pendulum.from_format("2023-07-14", "YYYY-MM-DD").in_tz("UTC"),
     catchup=False,
 )
 def demo_cdc_data():
+    gold_to_metric = gold_to_metric_func()
+
     wild_to_bronze = wild_to_bronze_func()
 
     bronze_to_json = bronze_to_json_func()
 
-    databricks_json_to_dimensionalized = DatabricksRunNowOperator(
+    databricks_json_to_unvalidated_gold = DatabricksRunNowOperator(
         job_name="Run_Databricks_From_Airflow",
         databricks_conn_id="test_databricks_connection",
-        task_id="databricks_json_to_dimensionalized",
+        task_id="databricks_json_to_unvalidated_gold",
     )
+
+    pre_gold_to_validated_gold = pre_gold_to_validated_gold_func()
 
     bronze_to_json << wild_to_bronze
 
-    databricks_json_to_dimensionalized << bronze_to_json
+    databricks_json_to_unvalidated_gold << bronze_to_json
+
+    pre_gold_to_validated_gold << databricks_json_to_unvalidated_gold
 
 dag_obj = demo_cdc_data()
